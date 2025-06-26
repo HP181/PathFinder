@@ -145,146 +145,171 @@ export function JobForm({ job, onSubmitSuccess }: JobFormProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {isEditing ? "Edit Job Posting" : "Create New Job Posting"}
-        </CardTitle>
-        <CardDescription>
-          {isEditing
-            ? "Update the details of your job posting"
-            : "Fill out the form below to create a new job posting"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Job Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Software Engineer" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="company"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Acme Inc." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. Toronto, ON (or Remote)"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="skills"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Required Skills</FormLabel>
-                    <FormControl>
-                      <MultiSelect
-                        options={skillOptions}
-                        selected={field.value.map((skill) => ({
-                          label: skill,
-                          value: skill,
-                        }))}
-                        onChange={(selected) =>
-                          field.onChange(selected.map((item) => item.value))
-                        }
-                        placeholder="Select required skills"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Select the skills required for this position
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+    <div className="w-full">
+      {/* Glass Card Container */}
+      <div className="relative">
+        <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-600 opacity-20 blur"></div>
+        <div className="relative bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+          
+          {/* Header */}
+          <div className="relative p-8 border-b border-white/20">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="bg-gradient-to-br from-blue-500/20 to-indigo-500/20 p-3 rounded-xl backdrop-blur-sm border border-blue-400/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                  {isEditing ? "Edit Job Posting" : "Create New Job Posting"}
+                </h2>
+                <p className="text-gray-300">
+                  {isEditing
+                    ? "Update the details of your job posting"
+                    : "Fill out the form below to create a new job posting"}
+                </p>
+              </div>
             </div>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe the job role, responsibilities, and what the candidate will be doing..."
-                      className="min-h-[150px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          {/* Form Content */}
+          <div className="relative p-8">
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Job Title */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">Job Title</label>
+                  <input
+                    {...form.register("title")}
+                    placeholder="e.g. Software Engineer"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300"
+                  />
+                  {form.formState.errors.title && (
+                    <p className="text-sm text-red-400">{form.formState.errors.title.message}</p>
+                  )}
+                </div>
 
-            <FormField
-              control={form.control}
-              name="requirements"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Requirements</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="List the job requirements, one per line..."
-                      className="min-h-[100px]"
-                      value={field.value.join("\n")}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value
-                            .split("\n")
-                            .filter((line) => line.trim() !== "")
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Enter each requirement on a new line
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                {/* Company */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">Company</label>
+                  <input
+                    {...form.register("company")}
+                    placeholder="e.g. Acme Inc."
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300"
+                  />
+                  {form.formState.errors.company && (
+                    <p className="text-sm text-red-400">{form.formState.errors.company.message}</p>
+                  )}
+                </div>
 
-            <Button type="submit" className="w-full">
-              {isEditing ? "Update Job Posting" : "Create Job Posting"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+                {/* Location */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">Location</label>
+                  <input
+                    {...form.register("location")}
+                    placeholder="e.g. Toronto, ON (or Remote)"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300"
+                  />
+                  {form.formState.errors.location && (
+                    <p className="text-sm text-red-400">{form.formState.errors.location.message}</p>
+                  )}
+                </div>
+
+                {/* Skills */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-200">Required Skills</label>
+                  <div className="relative">
+                    <select
+                      multiple
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300 cursor-pointer"
+                      style={{ minHeight: '120px' }}
+                    >
+                      {skillOptions.slice(0, 10).map((option) => (
+                        <option key={option.value} value={option.value} className="bg-slate-800 text-white py-1">
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="text-xs text-gray-400">Select the skills required for this position</p>
+                  {form.formState.errors.skills && (
+                    <p className="text-sm text-red-400">{form.formState.errors.skills.message}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Job Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-200">Job Description</label>
+                <textarea
+                  {...form.register("description")}
+                  placeholder="Describe the job role, responsibilities, and what the candidate will be doing..."
+                  rows={6}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300 resize-none"
+                />
+                {form.formState.errors.description && (
+                  <p className="text-sm text-red-400">{form.formState.errors.description.message}</p>
+                )}
+              </div>
+
+              {/* Requirements */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-200">Requirements</label>
+                <textarea
+                  {...form.register("requirements")}
+                  placeholder="List the job requirements, one per line..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-300 resize-none"
+                />
+                <p className="text-xs text-gray-400">Enter each requirement on a new line</p>
+                {form.formState.errors.requirements && (
+                  <p className="text-sm text-red-400">{form.formState.errors.requirements.message}</p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-4 border-t border-white/20">
+                <button
+                  onClick={form.handleSubmit(onSubmit)}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl border border-blue-500/50 hover:border-blue-400/50 cursor-pointer"
+                >
+                  {isEditing ? "Update Job Posting" : "Create Job Posting"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Global Cursor Styling */}
+      <style jsx global>{`
+        /* Ensure all interactive elements have proper cursors */
+        button, a, [role="button"], .cursor-pointer, 
+        select, option, input, textarea,
+        input[type="submit"], input[type="button"], 
+        button[type="submit"], button[type="button"] {
+          cursor: pointer !important;
+        }
+        
+        /* Form elements should have text cursor */
+        input[type="text"], input[type="email"], input[type="password"],
+        textarea, input:not([type="submit"]):not([type="button"]) {
+          cursor: text !important;
+        }
+
+        /* Select elements should have pointer cursor */
+        select {
+          cursor: pointer !important;
+        }
+        
+        /* Interactive hover effects */
+        .hover\\:scale-105:hover, 
+        .hover\\:from-blue-700:hover,
+        .hover\\:to-indigo-700:hover {
+          cursor: pointer !important;
+        }
+      `}</style>
+    </div>
   );
 }

@@ -116,14 +116,21 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Log in to PathFinder</CardTitle>
-        <CardDescription className="text-center">
+    <Card className="w-full max-w-md mx-auto border-0 shadow-none bg-transparent">
+      <CardHeader className="text-center mb-8">
+        <div className="inline-flex items-center px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-sm font-medium mb-4 backdrop-blur-sm border border-cyan-400/30 mx-auto">
+          <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full mr-2 animate-pulse"></span>
+          Welcome Back
+        </div>
+        <CardTitle className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent mb-3">
+          Log in to PathFinder
+        </CardTitle>
+        <CardDescription className="text-gray-300 text-sm">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      
+      <CardContent className="space-y-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -131,16 +138,17 @@ export function LoginForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-200">Email</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="your.email@example.com"
                       type="email"
                       disabled={isLoading}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-sm text-red-400" />
                 </FormItem>
               )}
             />
@@ -149,37 +157,53 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-200">Password</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="••••••••"
                       type="password"
                       disabled={isLoading}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-sm text-red-400" />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            
+            {/* Forgot Password Link */}
+            <div className="flex justify-end">
+              <Link 
+                href="/forgot-password" 
+                className="cursor-pointer text-sm text-cyan-300 hover:text-cyan-200 underline decoration-2 underline-offset-2 decoration-cyan-300/50 hover:decoration-cyan-200/50 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="cursor-pointer w-full inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl border border-blue-500/50 hover:border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:scale-100" 
+              disabled={isLoading}
+            >
               {isLoading ? 'Logging in...' : 'Log in'}
             </Button>
           </form>
         </Form>
 
-        <div className="relative my-4">
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-white/20"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">or</span>
+            <span className="px-3 bg-white/10 text-gray-300 rounded-full backdrop-blur-sm">or</span>
           </div>
         </div>
 
         <Button
           variant="outline"
-          className="w-full"
+          className="cursor-pointer w-full inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 px-4 py-3 border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:scale-100"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
         >
@@ -201,13 +225,14 @@ export function LoginForm() {
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
+          {isLoading ? 'Signing in...' : 'Continue with Google'}
         </Button>
       </CardContent>
-      <CardFooter className="flex justify-center">
-        <p className="text-sm text-gray-600">
+      
+      <CardFooter className="text-center mt-8 pt-6 border-t border-white/10 flex justify-center">
+        <p className="text-sm text-gray-300">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-primary hover:underline">
+          <Link href="/register" className="text-cyan-300 hover:text-cyan-200 font-medium underline decoration-2 underline-offset-2 decoration-cyan-300/50 hover:decoration-cyan-200/50 transition-colors">
             Sign up
           </Link>
         </p>
