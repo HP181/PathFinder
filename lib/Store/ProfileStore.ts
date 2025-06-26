@@ -1,8 +1,5 @@
 import { create } from 'zustand';
 import { 
-  ImmigrantProfile, 
-  MentorProfile, 
-  RecruiterProfile, 
   UserProfile,
   createOrUpdateProfile, 
   getUserProfile 
@@ -44,6 +41,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       const currentProfile = get().profile;
       
       if (!currentProfile) {
+        console.error('updateProfile called but no profile loaded');
         throw new Error('No profile loaded');
       }
       

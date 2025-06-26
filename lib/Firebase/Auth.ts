@@ -60,7 +60,11 @@ export const signOut = async (): Promise<void> => {
 
 // Get user role from Firestore
 export const getUserRole = async (user: User): Promise<UserRole | null> => {
-  if (!user) return null;
+  if (!user) {
+console.log("no user");
+alert("no user");
+    return null;
+  }
   
   try {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -71,5 +75,26 @@ export const getUserRole = async (user: User): Promise<UserRole | null> => {
   } catch (error) {
     console.error('Error getting user role:', error);
     return null;
+  }
+};
+
+
+// Create a user document in Firestore if signing in with Google and user is new
+export const createUserIfNewWithGoogle = async (
+  user: User,
+  role: UserRole
+): Promise<void> => {
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      createdAt: new Date().toISOString(),
+      profileCompleted: false,
+    });
   }
 };

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -5,12 +7,26 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { toast  } from 'sonner';
-import { signIn, signInWithGoogle } from '@/lib/Firebase/Auth';
-import { useAuthStore } from '@/lib/Store/Auth-Store';
+import { toast } from 'sonner';
+import { signIn, signInWithGoogle, getUserRole } from '@/lib/Firebase/Auth';
+import { auth } from '@/lib/Firebase/Config';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -21,7 +37,6 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Initialize form with react-hook-form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -30,15 +45,36 @@ export function LoginForm() {
     },
   });
 
-  // Handle form submission
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
       await signIn(values.email, values.password);
-      toast.success('Login successful');
-      
-      // Redirect based on user role (handled by middleware)
-      router.push('/');
+      const currentUser = auth.currentUser;
+
+      if (currentUser) {
+        const role = await getUserRole(currentUser);
+
+        toast.success('Login successful');
+
+        switch (role) {
+          case 'immigrant':
+            router.push('/immigrant');
+            break;
+          case 'mentor':
+            router.push('/mentor');
+            break;
+          case 'recruiter':
+            router.push('/recruiter');
+            break;
+          case 'admin':
+            router.push('/admin');
+            break;
+          default:
+            router.push('/');
+        }
+      } else {
+        toast.error('User not found after login');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Please check your credentials and try again.');
     } finally {
@@ -46,15 +82,32 @@ export function LoginForm() {
     }
   };
 
-  // Handle Google sign-in
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      const user = result.user;
+
+      const role = await getUserRole(user);
       toast.success('Welcome back to PathFinder!');
-      
-      // Redirect based on user role (handled by middleware)
-      router.push('/');
+
+      console.log("re", role);
+      switch (role) {
+        case 'immigrant':
+          router.push('/immigrant');
+          break;
+        case 'mentor':
+          router.push('/mentor');
+          break;
+        case 'recruiter':
+          router.push('/recruiter');
+          break;
+        case 'admin':
+          router.push('/admin');
+          break;
+        default:
+          router.push('/');
+      }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during Google sign-in.');
     } finally {
@@ -80,11 +133,11 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="your.email@example.com" 
-                      type="email" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="your.email@example.com"
+                      type="email"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -98,11 +151,11 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="••••••••" 
-                      type="password" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -114,7 +167,7 @@ export function LoginForm() {
             </Button>
           </form>
         </Form>
-        
+
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -123,7 +176,7 @@ export function LoginForm() {
             <span className="px-2 bg-white text-gray-500">or</span>
           </div>
         </div>
-        
+
         <Button
           variant="outline"
           className="w-full"

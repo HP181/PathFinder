@@ -1,9 +1,11 @@
-import React from 'react'
+'use client';
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+import React, { useState } from 'react';
+import { RegisterForm } from '@/components/Auth/Register';
+import { UserRole } from '@/lib/Firebase/Auth';
+
+export default function RegisterPage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  
+  return <RegisterForm role={selectedRole} onSelectRole={setSelectedRole} />;
 }
-
-export default page

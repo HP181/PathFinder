@@ -1,76 +1,93 @@
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { createUser, signInWithGoogle, UserRole } from '@/lib/Firebase/Auth';
-import { RoleSelector } from './RoleSelector';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { createUser, createUserIfNewWithGoogle, signInWithGoogle, UserRole } from "@/lib/Firebase/Auth";
+import { RoleSelector } from "./RoleSelector";
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const formSchema = z
+  .object({
+    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    password: z
+      .string()
+      .min(8, { message: "Password must be at least 8 characters" }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 interface RegisterFormProps {
   role: UserRole | null;
   onSelectRole: (role: UserRole | null) => void;
 }
 
-
 export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+    // Initialize form with react-hook-form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
   // If no role is selected, show the role selector
   if (!role) {
     return <RoleSelector onSelectRole={onSelectRole} />;
   }
 
-  // Initialize form with react-hook-form
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-    },
-  });
-
   // Handle form submission
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
       await createUser(values.email, values.password, values.name, role);
-      toast.success('Account created');
-      
+      toast.success("Account created");
+
       // Redirect to profile completion page based on role
       switch (role) {
-        case 'immigrant':
-          router.push('/immigrant/profile');
+        case "immigrant":
+          router.push("/immigrant/profile");
           break;
-        case 'mentor':
-          router.push('/mentor/profile');
+        case "mentor":
+          router.push("/mentor/profile");
           break;
-        case 'recruiter':
-          router.push('/recruiter/profile');
+        case "recruiter":
+          router.push("/recruiter/profile");
           break;
         default:
-          router.push('/');
+          router.push("/");
       }
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+      toast.error(error.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }
@@ -82,28 +99,29 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
     try {
       // Sign in with Google, then update the user role
       const result = await signInWithGoogle();
-      
+
       // TODO: Set the role for the Google-signed in user
       // This would need to be implemented in the backend
-      
-      toast.success('Account created');
-      
+   await createUserIfNewWithGoogle(result.user, role);
+
+      toast.success("Account created");
+
       // Redirect based on role
       switch (role) {
-        case 'immigrant':
-          router.push('/immigrant/profile');
+        case "immigrant":
+          router.push("/immigrant/profile");
           break;
-        case 'mentor':
-          router.push('/mentor/profile');
+        case "mentor":
+          router.push("/mentor/profile");
           break;
-        case 'recruiter':
-          router.push('/recruiter/profile');
+        case "recruiter":
+          router.push("/recruiter/profile");
           break;
         default:
-          router.push('/');
+          router.push("/");
       }
     } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
+      toast.error(error.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }
@@ -129,10 +147,10 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="John Doe" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="John Doe"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -146,11 +164,11 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="your.email@example.com" 
-                      type="email" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="your.email@example.com"
+                      type="email"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -164,11 +182,11 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="••••••••" 
-                      type="password" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -182,11 +200,11 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="••••••••" 
-                      type="password" 
-                      disabled={isLoading} 
-                      {...field} 
+                    <Input
+                      placeholder="••••••••"
+                      type="password"
+                      disabled={isLoading}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -194,11 +212,11 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
           </form>
         </Form>
-        
+
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -207,7 +225,7 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
             <span className="px-2 bg-white text-gray-500">or</span>
           </div>
         </div>
-        
+
         <Button
           variant="outline"
           className="w-full"
@@ -234,10 +252,10 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
           </svg>
           Sign up with Google
         </Button>
-        
+
         <div className="mt-4">
-          <Button 
-            variant="link" 
+          <Button
+            variant="link"
             className="px-0 text-sm"
             onClick={() => onSelectRole(null)}
           >
@@ -247,7 +265,7 @@ export function RegisterForm({ role, onSelectRole }: RegisterFormProps) {
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-gray-600">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link href="/login" className="text-primary hover:underline">
             Log in
           </Link>

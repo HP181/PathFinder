@@ -61,11 +61,14 @@ export interface RecruiterProfile {
   company: string;
   industry: string;
   phone?: string;
+  resumeUrl?: string; // ✅ Add this to fix type errors
+  resumeData?: any;
   createdAt: string;
   updatedAt: string;
   profileCompleted: boolean;
   profileCompletionPercentage: number;
 }
+
 
 export type UserProfile = ImmigrantProfile | MentorProfile | RecruiterProfile;
 
@@ -137,13 +140,31 @@ export const createOrUpdateProfile = async (
 // Get user profile
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
-    const profileDoc = await getDoc(doc(db, 'profiles', uid));
-    if (profileDoc.exists()) {
-      return profileDoc.data() as UserProfile;
+    const userDocRef = doc(db, 'users', uid);
+    const profileDocRef = doc(db, 'profiles', uid);
+
+    const [userSnap, profileSnap] = await Promise.all([
+      getDoc(userDocRef),
+      getDoc(profileDocRef),
+    ]);
+
+    if (!userSnap.exists()) {
+      console.warn(`User document not found for uid: ${uid}`);
+      return null;
     }
-    return null;
+
+    const userData = userSnap.data();
+    const profileData = profileSnap.exists() ? profileSnap.data() : {};
+
+    const mergedData = {
+      ...userData,
+      ...profileData,
+    };
+
+    // Return as UserProfile with inferred role
+    return mergedData as UserProfile;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error('Error getting user profile (merged):', error);
     return null;
   }
 };
@@ -257,9 +278,51 @@ export const getMatchesByMentor = async (mentorUid: string): Promise<Match[]> =>
   );
   
   const querySnapshot = await getDocs(matchesQuery);
+
+  console.log("ewf", querySnapshot);
   
-  return querySnapshot.docs.map(doc => ({
+  const w = await querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   } as Match));
+  console.log("w", w);
+
+  return w;
 };
+
+
+// Get all mentors from the 'users' collection
+export const getAllMentors = async (): Promise<MentorProfile[]> => {
+  try {
+    const q = query(collection(db, 'users'), where('role', '==', 'mentor'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as Partial<MentorProfile>;
+
+      return {
+        uid: data.uid ?? '',
+        displayName: data.displayName ?? '',
+        email: data.email ?? '',
+        role: 'mentor',
+        professionalBackground: data.professionalBackground ?? '',
+        expertise: data.expertise ?? [],
+        industries: data.industries ?? [],
+        availability: data.availability ?? {},
+        createdAt: data.createdAt ?? '',
+        updatedAt: data.updatedAt ?? '',
+        profileCompleted: data.profileCompleted ?? false,
+        profileCompletionPercentage: data.profileCompletionPercentage ?? 0,
+        resumeUrl: data.resumeUrl ?? '',
+        resumeData: data.resumeData ?? {},
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching mentors:', error);
+    return [];
+  }
+};
+
+
+
+
