@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ResumeAnalyzer } from './ResumeAnalizer';
+import { ResumeBuilder } from './ResumeAnalizer';
 // import { CredentialAnalyzer } from './CredentialAnalyzer';
 // import { MockInterview } from './MockInterview';
 
@@ -24,8 +24,7 @@ export function CareerCoach() {
         </TabsList>
         
         <TabsContent value="resume">
-          <ResumeAnalyzer />
-          <p>ResumeAnalyzer</p>
+          <ResumeBuilder />
         </TabsContent>
         
         <TabsContent value="credentials">
