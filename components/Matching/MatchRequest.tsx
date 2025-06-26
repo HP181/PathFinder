@@ -199,9 +199,9 @@ function MatchRequest({
       </div>
 
       {/* Demo Controls */}
-      <div className="mt-8 text-center space-y-4">
+      {/* <div className="mt-8 text-center space-y-4">
         <h3 className="text-white text-lg font-semibold mb-4">Demo - Click buttons above to test</h3>
-      </div>
+      </div> */}
     </div>
   );
 }

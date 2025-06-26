@@ -24,29 +24,61 @@ export default function ChatPage() {
       const db = getFirestore();
       const usersCol = collection(db, 'users');
       const userSnapshot = await getDocs(usersCol);
-
+        let currentUserRole = null; 
+          if (!currentUserRole) {
+            const currentUserDoc = userSnapshot.docs.find(doc => doc.id === user?.uid);
+            currentUserRole = currentUserDoc?.data().role;
+          }
           // Fetch mentor UIDs from 'matches' where immigrantUid == current user id
           const matchesCol = collection(db, 'matches');
           const matchesSnapshot = await getDocs(matchesCol);
+              // If current user is a mentor, fetch immigrant UIDs from 'matches' where mentorUid == current user id
+              if (currentUserRole === "mentor") {
+              const immigrantUids: string[] = matchesSnapshot.docs
+                .filter(doc => doc.data().mentorUid === user?.uid)
+                .map(doc => doc.data().immigrantUid);
+
+              // Only include users who are immigrants in the matches
+              const users: User[] = userSnapshot.docs
+                .filter(doc => immigrantUids.includes(doc.id))
+                .map(doc => ({
+                userId: doc.id,
+                name: doc.data().displayName,
+                role: doc.data().role,
+                }));
+              setUserList(users);
+              return;
+              }else{
+
           const mentorUids: string[] = matchesSnapshot.docs
             .filter(doc => doc.data().immigrantUid === user?.uid)
             .map(doc => doc.data().mentorUid);
-
-          // Only include users who are mentors in the matches
-          const users: User[] = userSnapshot.docs
+                 const users: User[] = userSnapshot.docs
             .filter(doc => mentorUids.includes(doc.id))
             .map(doc => ({
               userId: doc.id,
               name: doc.data().displayName,
               role: doc.data().role,
             }));
+            setUserList(users);
+              }
+
+            
+          // Only include users who are mentors in the matches
+          // const users: User[] = userSnapshot.docs
+          //   .filter(doc => mentorUids.includes(doc.id))
+          //   .map(doc => ({
+          //     userId: doc.id,
+          //     name: doc.data().displayName,
+          //     role: doc.data().role,
+          //   }));
 
       // const users: User[] = userSnapshot.docs.map(doc => ({
       //   userId: doc.id,
       //   name: doc.data().displayName,
       //   role: doc.data().role,
       // })).filter(userx => userx.userId !== user?.uid);
-      setUserList(users);
+      // setUserList(users);
     };
     fetchUsers();
   }, [user]);
