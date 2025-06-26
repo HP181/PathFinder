@@ -7,12 +7,7 @@ import {
   query, 
   where, 
   updateDoc,
-  deleteDoc,
   addDoc,
-  serverTimestamp,
-  DocumentData,
-  QueryDocumentSnapshot,
-  DocumentReference
 } from 'firebase/firestore';
 import { db } from './Config';
 import { UserRole } from './Auth';
@@ -44,7 +39,12 @@ export interface MentorProfile {
   professionalBackground: string;
   expertise: string[];
   industries: string[];
-  availability: Record<string, any>; // Structured availability data
+  availability?: Array<{
+    date: string;      // e.g., '2025-06-28'
+    startTime: string; // e.g., '09:00'
+    endTime: string;   // e.g., '10:00'
+    status: 'available' | 'booked'; // NEW status field to track booking
+  }>;
   resumeUrl?: string;
   resumeData?: any; // Parsed resume data from DocumentAI
   createdAt: string;
@@ -61,6 +61,14 @@ export interface RecruiterProfile {
   linkedIn?: string;
   position: string;
   role: 'recruiter';
+<<<<<<< main
+  company: string;
+  industry: string;
+  phone?: string;
+  resumeUrl?: string;
+  resumeData?: any;
+=======
+>>>>>>> admin
   createdAt: string;
   updatedAt: string;
   companyName: string;
@@ -71,7 +79,6 @@ export interface RecruiterProfile {
   profileCompleted: boolean;
   profileCompletionPercentage: number;
 }
-
 
 export type UserProfile = ImmigrantProfile | MentorProfile | RecruiterProfile;
 
@@ -105,7 +112,7 @@ export const createOrUpdateProfile = async (
       p.professionalBackground, 
       p.expertise?.length > 0, 
       p.industries?.length > 0, 
-      p.availability && Object.keys(p.availability).length > 0,
+      p.availability && Array.isArray(p.availability) && p.availability.length > 0,
       p.resumeUrl
     ];
     completionPercentage = Math.round(
@@ -145,7 +152,7 @@ export const createOrUpdateProfile = async (
   });
 };
 
-// Get user profile
+// Get user profile (merged from users + profiles)
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
     const userDocRef = doc(db, 'users', uid);
@@ -164,15 +171,12 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     const userData = userSnap.data();
     const profileData = profileSnap.exists() ? profileSnap.data() : {};
 
-    const mergedData = {
+    return {
       ...userData,
       ...profileData,
-    };
-
-    // Return as UserProfile with inferred role
-    return mergedData as UserProfile;
+    } as UserProfile;
   } catch (error) {
-    console.error('Error getting user profile (merged):', error);
+    console.error('Error getting user profile:', error);
     return null;
   }
 };
@@ -287,50 +291,110 @@ export const getMatchesByMentor = async (mentorUid: string): Promise<Match[]> =>
   
   const querySnapshot = await getDocs(matchesQuery);
 
-  console.log("ewf", querySnapshot);
-  
-  const w = await querySnapshot.docs.map(doc => ({
+  return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   } as Match));
-  console.log("w", w);
-
-  return w;
 };
 
-
-// Get all mentors from the 'users' collection
+// Get all mentors (merged data from users + profiles)
 export const getAllMentors = async (): Promise<MentorProfile[]> => {
   try {
-    const q = query(collection(db, 'users'), where('role', '==', 'mentor'));
-    const snapshot = await getDocs(q);
+    const usersQuery = query(collection(db, 'users'), where('role', '==', 'mentor'));
+    const usersSnapshot = await getDocs(usersQuery);
 
-    return snapshot.docs.map((doc) => {
-      const data = doc.data() as Partial<MentorProfile>;
+    const mentors: MentorProfile[] = [];
 
-      return {
-        uid: data.uid ?? '',
-        displayName: data.displayName ?? '',
-        email: data.email ?? '',
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      const profileRef = doc(db, 'profiles', userDoc.id);
+      const profileSnap = await getDoc(profileRef);
+      const profileData = profileSnap.exists() ? profileSnap.data() : {};
+
+      mentors.push({
+        uid: userDoc.id,
+        displayName: userData.displayName ?? '',
+        email: userData.email ?? '',
         role: 'mentor',
-        professionalBackground: data.professionalBackground ?? '',
-        expertise: data.expertise ?? [],
-        industries: data.industries ?? [],
-        availability: data.availability ?? {},
-        createdAt: data.createdAt ?? '',
-        updatedAt: data.updatedAt ?? '',
-        profileCompleted: data.profileCompleted ?? false,
-        profileCompletionPercentage: data.profileCompletionPercentage ?? 0,
-        resumeUrl: data.resumeUrl ?? '',
-        resumeData: data.resumeData ?? {},
-      };
-    });
+        professionalBackground: profileData.professionalBackground ?? '',
+        expertise: profileData.expertise ?? [],
+        industries: profileData.industries ?? [],
+        availability: Array.isArray(profileData.availability) ? profileData.availability : [],
+        createdAt: userData.createdAt ?? '',
+        updatedAt: userData.updatedAt ?? '',
+        profileCompleted: userData.profileCompleted ?? false,
+        profileCompletionPercentage: userData.profileCompletionPercentage ?? 0,
+        resumeUrl: profileData.resumeUrl ?? '',
+        resumeData: profileData.resumeData ?? {},
+      });
+    }
+
+    return mentors;
   } catch (error) {
     console.error('Error fetching mentors:', error);
     return [];
   }
 };
 
+// AvailabilitySlot type
+export type AvailabilitySlot = {
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: 'available' | 'booked';
+};
 
+// Set mentor availability (overwrite all slots)
+export const setMentorAvailability = async (
+  mentorUid: string,
+  availability: AvailabilitySlot[]
+): Promise<void> => {
+  const mentorRef = doc(db, 'profiles', mentorUid);
+  await updateDoc(mentorRef, {
+    availability,
+    updatedAt: new Date().toISOString(),
+  });
+};
 
+// Get mentor availability
+export const getMentorAvailabilityFromFirestore = async (
+  mentorUid: string
+): Promise<AvailabilitySlot[] | null> => {
+  const mentorRef = doc(db, 'profiles', mentorUid);
+  const docSnap = await getDoc(mentorRef);
+  
+  if (!docSnap.exists()) {
+    console.warn(`Mentor profile not found for uid: ${mentorUid}`);
+    return null;
+  }
+  
+  const data = docSnap.data();
+  return Array.isArray(data?.availability) ? data.availability : null;
+};
 
+// Add a single availability slot
+export const addAvailabilitySlot = async (
+  mentorUid: string,
+  slot: AvailabilitySlot
+): Promise<void> => {
+  const current = await getMentorAvailabilityFromFirestore(mentorUid);
+  const updated = [...(current ?? []), slot];
+  await setMentorAvailability(mentorUid, updated);
+};
+
+// Remove a single availability slot
+export const removeAvailabilitySlot = async (
+  mentorUid: string,
+  slotToRemove: AvailabilitySlot
+): Promise<void> => {
+  const current = await getMentorAvailabilityFromFirestore(mentorUid);
+  const updated = (current ?? []).filter(
+    (slot) =>
+      !(
+        slot.date === slotToRemove.date &&
+        slot.startTime === slotToRemove.startTime &&
+        slot.endTime === slotToRemove.endTime
+      )
+  );
+  await setMentorAvailability(mentorUid, updated);
+};

@@ -58,7 +58,7 @@ export function LoginForm() {
 
         switch (role) {
           case 'immigrant':
-            router.push('/immigrant');
+            router.push('/immigrant/profile');
             break;
           case 'mentor':
             router.push('/mentor');
@@ -94,7 +94,7 @@ export function LoginForm() {
       console.log("re", role);
       switch (role) {
         case 'immigrant':
-          router.push('/immigrant');
+          router.push('/immigrant/profile');
           break;
         case 'mentor':
           router.push('/mentor');

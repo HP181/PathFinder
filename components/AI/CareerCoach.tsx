@@ -3,8 +3,8 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResumeAnalyzer } from './ResumeAnalizer';
-import { CredentialAnalyzer } from './CredentialAnalyzer';
-import { MockInterview } from './MockInterview';
+// import { CredentialAnalyzer } from './CredentialAnalyzer';
+// import { MockInterview } from './MockInterview';
 
 export function CareerCoach() {
   return (
@@ -25,14 +25,17 @@ export function CareerCoach() {
         
         <TabsContent value="resume">
           <ResumeAnalyzer />
+          <p>ResumeAnalyzer</p>
         </TabsContent>
         
         <TabsContent value="credentials">
-          <CredentialAnalyzer />
+          {/* <CredentialAnalyzer /> */}
+          <p>CredentialAnalyzer</p>
         </TabsContent>
         
         <TabsContent value="interview">
-          <MockInterview />
+          {/* <MockInterview /> */}
+          <p>MockInterview</p>
         </TabsContent>
       </Tabs>
     </div>

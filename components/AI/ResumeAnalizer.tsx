@@ -26,7 +26,8 @@ export function ResumeAnalyzer() {
   const { user } = useAuthStore();
   
   // Check if user has uploaded a resume
-  const hasResume = !!profile?.resumeUrl && !!profile?.resumeData;
+  const hasResume = typeof profile?.resumeUrl === 'string' && profile.resumeUrl.trim() !== '';
+
   
   // Initialize form with react-hook-form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,13 +49,25 @@ export function ResumeAnalyzer() {
     setAnalysisResult(null);
     
     try {
-      const result = await analyzeResume(
-        profile?.resumeData,
-        values.targetRole,
-        values.targetIndustry
-      );
-      
-      setAnalysisResult(result);
+     const response = await fetch('/api/analyze-resume', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    resumeData: profile?.resumeData,
+    targetRole: values.targetRole,
+    targetIndustry: values.targetIndustry,
+  }),
+});
+
+if (!response.ok) {
+  throw new Error('Failed to analyze resume');
+}
+
+const result = await response.json();
+setAnalysisResult(result);
+
     } catch (error: any) {
       toast(error.message || 'An error occurred during resume analysis.');
     } finally {

@@ -1,62 +1,59 @@
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 
-// Define an interface for available time slots
 interface AvailableTimeSlot {
   start: string;
   end: string;
 }
 
-// Initialize the Google Calendar client
+// Initialize the service-account authenticated client
 const getCalendarClient = () => {
   const client = new JWT({
-    email: process.env.GOOGLE_CLIENT_EMAIL,
-    key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    email: process.env.GOOGLE_CLIENT_EMAIL!,
+    key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
     scopes: ['https://www.googleapis.com/auth/calendar'],
   });
   
-  // Fix the calendar initialization by using the correct type signature
-  return google.calendar({ 
-    version: 'v3', 
-    auth: client as any // Type assertion to bypass type error
+  return google.calendar({
+    version: 'v3',
+    auth: client as any
   });
 };
 
-// Get mentor availability
+/**
+ * Get mentor's busy time and derive available slots.
+ */
 export const getMentorAvailability = async (
   mentorEmail: string,
-  startDate: string,
+  startDate: string, // ISO
   endDate: string
 ): Promise<AvailableTimeSlot[]> => {
   try {
     const calendar = getCalendarClient();
-    
-    // Get the mentor's free/busy information
-    const response = await calendar.freebusy.query({
+    const { data } = await calendar.freebusy.query({
       requestBody: {
         timeMin: startDate,
         timeMax: endDate,
         items: [{ id: mentorEmail }],
       },
     });
-    
-    // Extract the busy times
-    const busyTimes = response.data.calendars?.[mentorEmail]?.busy || [];
-    
-    // Convert busy times to available time slots
-    // This is a simplified example - you would need more complex logic for real-world use
-    const availableSlots: AvailableTimeSlot[] = [];
-    
-    // TODO: Implement more complex availability calculation
-    
-    return availableSlots;
-  } catch (error) {
-    console.error('Error getting mentor availability:', error);
-    throw new Error('Failed to get mentor availability');
+
+    const busy = data.calendars?.[mentorEmail]?.busy || [];
+
+    // In a real app, you'd invert busy to available across working hours
+    return busy.map(slot => ({
+      start: slot.start!,
+      end: slot.end!,
+    }));
+  } catch (err) {
+    console.error('Error retrieving availability', err);
+    throw new Error('Failed to get availability');
   }
 };
 
-// Create a meeting
+/**
+ * Create a meeting event between mentor and immigrant.
+ */
 export const createMeeting = async (
   mentorEmail: string,
   immigrantEmail: string,
@@ -64,44 +61,36 @@ export const createMeeting = async (
   endTime: string,
   summary: string,
   description: string
-): Promise<string> => {
+): Promise<{ eventId: string; meetLink: string }> => {
   try {
     const calendar = getCalendarClient();
-    
-    // Create the calendar event
-    const event = await calendar.events.insert({
+    const { data: e } = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: {
         summary,
         description,
-        start: {
-          dateTime: startTime,
-          timeZone: 'America/Toronto',
-        },
-        end: {
-          dateTime: endTime,
-          timeZone: 'America/Toronto',
-        },
+        start: { dateTime: startTime, timeZone: 'America/Toronto' },
+        end:   { dateTime: endTime, timeZone: 'America/Toronto' },
         attendees: [
           { email: mentorEmail },
           { email: immigrantEmail },
         ],
         conferenceData: {
           createRequest: {
-            requestId: `${Date.now()}`,
-            conferenceSolutionKey: {
-              type: 'hangoutsMeet',
-            },
+            requestId: `${Date.now()}-${mentorEmail}`,
+            conferenceSolutionKey: { type: 'hangoutsMeet' },
           },
         },
       },
       conferenceDataVersion: 1,
     });
-    
-    // Return the event ID and Google Meet link
-    return event.data.hangoutLink || '';
-  } catch (error) {
-    console.error('Error creating meeting:', error);
+
+    return {
+      eventId: e.id!,
+      meetLink: e.hangoutLink || '',
+    };
+  } catch (err) {
+    console.error('Error creating meeting', err);
     throw new Error('Failed to create meeting');
   }
 };
