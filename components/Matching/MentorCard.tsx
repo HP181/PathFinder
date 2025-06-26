@@ -1,5 +1,14 @@
+'use client';
+
 import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,27 +19,28 @@ interface MentorCardProps {
   mentor: MentorProfile;
   compatibilityScore: number;
   onRequestConnection: () => void;
+  onShowDetails: () => void;
   isPending?: boolean;
   isConnected?: boolean;
+  canViewDetails: boolean; // ✅ NEW PROP
 }
 
-export function MentorCard({ 
-  mentor, 
-  compatibilityScore, 
+export function MentorCard({
+  mentor,
+  compatibilityScore,
   onRequestConnection,
+  onShowDetails,
   isPending = false,
-  isConnected = false
+  isConnected = false,
+  canViewDetails,
 }: MentorCardProps) {
-  // Get the first letter of the mentor's display name for the avatar fallback
   const getInitials = () => {
     if (!mentor.displayName) return 'M';
     return mentor.displayName.charAt(0).toUpperCase();
   };
-  
-  // Format compatibility score as a percentage
+
   const scorePercentage = Math.round(compatibilityScore * 100);
-  
-  // Determine button state based on connection status
+
   const getButtonState = () => {
     if (isConnected) {
       return { text: 'Connected', disabled: true };
@@ -40,7 +50,7 @@ export function MentorCard({
     }
     return { text: 'Request Connection', disabled: false };
   };
-  
+
   const buttonState = getButtonState();
 
   return (
@@ -87,15 +97,26 @@ export function MentorCard({
           </div>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button 
-          className="w-full" 
-          onClick={onRequestConnection} 
+      <CardFooter className="flex flex-col space-y-2">
+        <Button
+          className="w-full"
+          onClick={onRequestConnection}
           disabled={buttonState.disabled}
-          variant={isConnected ? "outline" : "default"}
+          variant={isConnected ? 'outline' : 'default'}
         >
           {buttonState.text}
         </Button>
+
+        {/* ✅ Only show details button if user has a match with this mentor */}
+        {canViewDetails && (
+          <Button
+            variant="link"
+            className="w-full text-center"
+            onClick={onShowDetails}
+          >
+            More Details & Booking
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

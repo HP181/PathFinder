@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { MentorCard } from './MentorCard';
+import { MentorDetailsModal } from './MentorDetailsModal';
 import { useAuthStore } from '@/lib/Store/Auth-Store';
 import { useMatchingStore } from '@/lib/Store/MatchingStore';
 import { MentorProfile, getAllMentors } from '@/lib/Firebase/Firestore';
@@ -11,6 +12,9 @@ import { Loader2 } from 'lucide-react';
 export function MentorList() {
   const [mentors, setMentors] = useState<{ mentor: MentorProfile; compatibilityScore: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMentor, setSelectedMentor] = useState<MentorProfile | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const { user } = useAuthStore();
   const { matches, loadMatches, createMatch } = useMatchingStore();
 
@@ -19,18 +23,14 @@ export function MentorList() {
       setIsLoading(true);
 
       try {
-        // ✅ Fetch mentors from Firestore
         const mentorList = await getAllMentors();
-
-        // ✅ Apply optional compatibility score logic (replace with real logic if needed)
         const withScores = mentorList.map((mentor) => ({
           mentor,
-          compatibilityScore: Math.random(), // Replace with real compatibility calculation
+          compatibilityScore: Math.random(), // Replace with real logic
         }));
 
         setMentors(withScores);
 
-        // Load matches if logged in
         if (user) {
           await loadMatches(user.uid, 'immigrant');
         }
@@ -68,6 +68,23 @@ export function MentorList() {
     };
   };
 
+  const hasMatchWithMentor = (mentor: MentorProfile | null) => {
+    if (!mentor || !user) return false;
+    return matches.some(
+      (m) => m.mentorUid === mentor.uid && m.immigrantUid === user.uid && m.status === 'accepted'
+    );
+  };
+
+  const openModal = (mentor: MentorProfile) => {
+    setSelectedMentor(mentor);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedMentor(null);
+    setModalOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -81,29 +98,41 @@ export function MentorList() {
     return (
       <div className="text-center py-12">
         <p className="text-lg font-medium">No mentors available</p>
-        <p className="text-muted-foreground mt-1">
-          Check back later for mentor recommendations.
-        </p>
+        <p className="text-muted-foreground mt-1">Check back later for mentor recommendations.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {mentors.map(({ mentor, compatibilityScore }) => {
-        const { isPending, isConnected } = getMatchStatus(mentor.uid);
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {mentors.map(({ mentor, compatibilityScore }) => {
+          const { isPending, isConnected } = getMatchStatus(mentor.uid);
+          const canViewDetails = hasMatchWithMentor(mentor);
 
-        return (
-          <MentorCard
-            key={mentor.uid}
-            mentor={mentor}
-            compatibilityScore={compatibilityScore}
-            onRequestConnection={() => handleRequestConnection(mentor.uid, compatibilityScore)}
-            isPending={isPending}
-            isConnected={isConnected}
-          />
-        );
-      })}
-    </div>
+          return (
+            <MentorCard
+              key={mentor.uid}
+              mentor={mentor}
+              compatibilityScore={compatibilityScore}
+              onRequestConnection={() => handleRequestConnection(mentor.uid, compatibilityScore)}
+              onShowDetails={() => openModal(mentor)}
+              isPending={isPending}
+              isConnected={isConnected}
+              canViewDetails={canViewDetails}
+            />
+          );
+        })}
+      </div>
+
+      {/* ✅ Show modal only if a match exists */}
+      {modalOpen && hasMatchWithMentor(selectedMentor) && selectedMentor && (
+        <MentorDetailsModal
+          mentor={selectedMentor}
+          isOpen={modalOpen}
+          onClose={closeModal}
+        />
+      )}
+    </>
   );
 }
