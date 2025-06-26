@@ -32,6 +32,8 @@ export default function ChatPage() {
             .filter(doc => doc.data().immigrantUid === user?.uid)
             .map(doc => doc.data().mentorUid);
 
+
+            
           // Only include users who are mentors in the matches
           const users: User[] = userSnapshot.docs
             .filter(doc => mentorUids.includes(doc.id))

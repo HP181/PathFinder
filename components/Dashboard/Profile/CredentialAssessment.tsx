@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/Store/Auth-Store';
 import { useProfileStore } from '@/lib/Store/ProfileStore';
 import { createOrUpdateProfile, ImmigrantProfile } from '@/lib/Firebase/Firestore';
-import { Loader2, Upload, File } from 'lucide-react';
+import { Loader2, Upload, File, AlertCircle } from 'lucide-react';
 import { storage } from '@/lib/Firebase/Config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -67,6 +67,10 @@ export function CredentialAssessment() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [documentName, setDocumentName] = useState<string | null>(null);
   const [assessmentResult, setAssessmentResult] = useState<CredentialResult | null>(null);
+  const [showUploadSection, setShowUploadSection] = useState(true);
+  
+  // Ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useAuthStore();
   const { profile, updateProfile } = useProfileStore();
@@ -81,19 +85,35 @@ export function CredentialAssessment() {
     },
   });
 
-  // Check for existing credential document on mount
+  // Check for existing credential document and assessment result on mount
   useEffect(() => {
-    if (profile && 'credentialDocumentUrl' in profile) {
-      setDocumentUrl(profile.credentialDocumentUrl as string);
-      
-      // Extract document name from URL
-      if (profile.credentialDocumentUrl) {
+    if (profile) {
+      // Check for document URL
+      if ('credentialDocumentUrl' in profile && profile.credentialDocumentUrl) {
+        setDocumentUrl(profile.credentialDocumentUrl as string);
+        
+        // Extract document name from URL
         const url = profile.credentialDocumentUrl as string;
         const fileName = url.split('/').pop()?.split('?')[0] || 'credential-document.pdf';
         setDocumentName(fileName);
+        
+        // Hide upload section if document exists
+        setShowUploadSection(false);
+      }
+      
+      // Check for assessment result
+      if ('credentialAssessment' in profile && profile.credentialAssessment) {
+        setAssessmentResult(profile.credentialAssessment as CredentialResult);
+        
+        // Pre-fill form with values if we have assessment data
+        const credential = profile.credentialAssessment?.canadianEquivalent || '';
+        if (credential) {
+          form.setValue('credential', credential.split(' in ')[0]);
+          form.setValue('industry', credential.split(' in ')[1] || '');
+        }
       }
     }
-  }, [profile]);
+  }, [profile, form]);
   
   // Handle file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +129,6 @@ export function CredentialAssessment() {
     }
     
     setIsUploading(true);
-    setDocumentUrl(null);
     
     try {
       // Create a reference to Firebase Storage
@@ -124,12 +143,18 @@ export function CredentialAssessment() {
       // Update state
       setDocumentUrl(url);
       setDocumentName(file.name);
+      setShowUploadSection(false);
+      
+      // Clear any previous assessment result when a new document is uploaded
+      setAssessmentResult(null);
       
       // Update profile
       if (profile) {
         const updatedProfile = {
           ...profile,
-          credentialDocumentUrl: url
+          credentialDocumentUrl: url,
+          // Remove any existing assessment if we're replacing the document
+          credentialAssessment: null
         };
         
         // Update in Firestore
@@ -145,7 +170,23 @@ export function CredentialAssessment() {
       toast.error('Failed to upload document');
     } finally {
       setIsUploading(false);
+      
+      // Reset the file input so the same file can be selected again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+  };
+  
+  // Handle clicking "Replace" button
+  const handleReplaceClick = () => {
+    setShowUploadSection(true);
+    // Focus on the file input after a brief delay to ensure UI has updated
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }, 100);
   };
   
   // Handle form submission
@@ -156,7 +197,6 @@ export function CredentialAssessment() {
     }
     
     setIsAssessing(true);
-    setAssessmentResult(null);
     
     try {
       // Call the credential assessment API
@@ -216,35 +256,13 @@ export function CredentialAssessment() {
         <CardContent>
           <div className="space-y-6">
             {/* Document Upload Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Upload Your Credential Document</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload your degree or diploma certificate as a PDF file
-              </p>
-              
-              {documentUrl ? (
-                <div className="p-4 border rounded-md flex items-center justify-between">
-                  <div className="flex items-center">
-                    <File className="h-6 w-6 mr-2 text-blue-500" />
-                    <div>
-                      <p className="font-medium">Document Uploaded</p>
-                      <p className="text-sm text-muted-foreground">{documentName}</p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => window.open(documentUrl, '_blank')}>
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('document-upload')?.click()}
-                    >
-                      Replace
-                    </Button>
-                  </div>
-                </div>
-              ) : (
+            {showUploadSection ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Upload Your Credential Document</h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload your degree or diploma certificate as a PDF file
+                </p>
+                
                 <div className="border-2 border-dashed rounded-md p-6 text-center">
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
                   <p className="text-lg font-medium">Upload Your Credential Document</p>
@@ -254,6 +272,7 @@ export function CredentialAssessment() {
                   <input
                     type="file"
                     id="document-upload"
+                    ref={fileInputRef}
                     className="hidden"
                     accept=".pdf"
                     onChange={handleFileUpload}
@@ -261,7 +280,7 @@ export function CredentialAssessment() {
                   />
                   <Button 
                     variant="outline" 
-                    onClick={() => document.getElementById('document-upload')?.click()}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                   >
                     {isUploading ? (
@@ -272,8 +291,33 @@ export function CredentialAssessment() {
                     ) : 'Browse Files'}
                   </Button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Your Credential Document</h3>
+                <div className="p-4 border rounded-md flex items-center justify-between">
+                  <div className="flex items-center">
+                    <File className="h-6 w-6 mr-2 text-blue-500" />
+                    <div>
+                      <p className="font-medium">Document Uploaded</p>
+                      <p className="text-sm text-muted-foreground">{documentName}</p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => window.open(documentUrl || '', '_blank')}>
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReplaceClick}
+                    >
+                      Replace
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Credential Assessment Form */}
             <Form {...form}>
@@ -352,14 +396,14 @@ export function CredentialAssessment() {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={isAssessing || !documentUrl}
+                  disabled={isAssessing || !documentUrl || showUploadSection}
                 >
                   {isAssessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Assessing...
                     </>
-                  ) : 'Assess Credential'}
+                  ) : assessmentResult ? 'Reassess Credential' : 'Assess Credential'}
                 </Button>
               </form>
             </Form>
@@ -384,16 +428,20 @@ export function CredentialAssessment() {
             
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Required Licenses or Certifications</h3>
-              <ul className="space-y-2">
-                {assessmentResult.requiredLicenses.map((license, index) => (
-                  <li key={index} className="flex items-start">
-                    <div className="bg-primary/10 rounded-full h-6 w-6 flex items-center justify-center mr-2 mt-0.5 shrink-0">
-                      <span className="text-primary font-medium">{index + 1}</span>
-                    </div>
-                    <span>{license}</span>
-                  </li>
-                ))}
-              </ul>
+              {assessmentResult.requiredLicenses.length > 0 ? (
+                <ul className="space-y-2">
+                  {assessmentResult.requiredLicenses.map((license, index) => (
+                    <li key={index} className="flex items-start">
+                      <div className="bg-primary/10 rounded-full h-6 w-6 flex items-center justify-center mr-2 mt-0.5 shrink-0">
+                        <span className="text-primary font-medium">{index + 1}</span>
+                      </div>
+                      <span>{license}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">No specific licenses or certifications required.</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -413,6 +461,14 @@ export function CredentialAssessment() {
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Explanation</h3>
               <p className="text-muted-foreground">{assessmentResult.explanation}</p>
+            </div>
+            
+            {/* Info about document replacement */}
+            <div className="flex items-center p-4 bg-blue-50 text-blue-800 rounded-md">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <p className="text-sm">
+                If you have another credential to assess, click the "Replace" button above to upload a different document.
+              </p>
             </div>
           </CardContent>
         </Card>
