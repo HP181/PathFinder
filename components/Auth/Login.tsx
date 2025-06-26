@@ -64,7 +64,7 @@ export function LoginForm() {
             router.push('/mentor');
             break;
           case 'recruiter':
-            router.push('/recruiter');
+            router.push('/recruiter/jobs');
             break;
           case 'admin':
             router.push('/admin');
@@ -100,7 +100,7 @@ export function LoginForm() {
           router.push('/mentor');
           break;
         case 'recruiter':
-          router.push('/recruiter');
+          router.push('/recruiter/jobs');
           break;
         case 'admin':
           router.push('/admin');

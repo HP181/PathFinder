@@ -27,8 +27,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/Store/Auth-Store";
 import { useJobStore } from "@/lib/Store/JobStore";
-import { Job, updateJob } from "@/lib/Firebase/Firestore";
+import { getUserProfile, Job, RecruiterProfile, updateJob } from "@/lib/Firebase/Firestore";
 import { MultiSelect } from "../ui/multi-select";
+import { UserProfile } from "firebase/auth";
 
 const formSchema = z.object({
   title: z
@@ -87,19 +88,21 @@ const skillOptions = [
 interface JobFormProps {
   job?: Job;
   onSubmitSuccess?: () => void;
+  userInfo?: RecruiterProfile | null
 }
 
-export function JobForm({ job, onSubmitSuccess }: JobFormProps) {
+export function JobForm({ job, onSubmitSuccess, userInfo }: JobFormProps) {
   const { user } = useAuthStore();
   const { createJob } = useJobStore();
   const isEditing = !!job;
+  
 
   // Initialize form with react-hook-form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: job?.title || "",
-      company: job?.company || "",
+      company: userInfo?.companyName || "",
       location: job?.location || "",
       description: job?.description || "",
       requirements: job?.requirements || [],
@@ -181,7 +184,7 @@ export function JobForm({ job, onSubmitSuccess }: JobFormProps) {
                   <FormItem>
                     <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Acme Inc." {...field} />
+                      <Input placeholder="e.g. Acme Inc." {...field} disabled={true} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
