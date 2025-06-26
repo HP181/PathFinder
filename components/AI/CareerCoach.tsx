@@ -8,7 +8,7 @@ import { CodingAssessment } from "../Dashboard/Profile/CodingAssessment";
 
 export function CareerCoach() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 glass rounded-2xl shadow-lg">
       <div>
         <h1 className="text-3xl font-bold">AI Career Coach</h1>
         <p className="text-muted-foreground mt-2">
@@ -40,6 +40,7 @@ export function CareerCoach() {
 
         <TabsContent value="interview">
           <CodingAssessment />
+
         </TabsContent>
       </Tabs>
     </div>
