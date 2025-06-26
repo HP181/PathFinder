@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRecruiterStore } from '@/lib/Store/RecruiterStore';
 import { createOrUpdateProfile, RecruiterProfile, getUserProfile } from '@/lib/Firebase/Firestore';
 import { useAuthStore } from '@/lib/Store/Auth-Store';
+import { toast } from "sonner";
 
 export function RecruiterProfileForm() {
   const { user } = useAuthStore();
@@ -75,7 +76,7 @@ export function RecruiterProfileForm() {
         temp.uid = user.uid
         console.log("profile", temp);
         await createOrUpdateProfile(temp);
-        alert('Profile saved successfully!');
+        toast.success("Profile saved successfully!");
       }
     }
   };

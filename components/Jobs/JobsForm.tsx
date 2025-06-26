@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/Store/Auth-Store";
 import { useJobStore } from "@/lib/Store/JobStore";
-import { Job } from "@/lib/Firebase/Firestore";
+import { Job, updateJob } from "@/lib/Firebase/Firestore";
 import { MultiSelect } from "../ui/multi-select";
 
 const formSchema = z.object({
@@ -51,7 +51,6 @@ const formSchema = z.object({
     .min(1, { message: "Please add at least one required skill" }),
 });
 
-// Sample skills for the dropdown
 const skillOptions = [
   "JavaScript",
   "TypeScript",
@@ -123,22 +122,16 @@ export function JobForm({ job, onSubmitSuccess }: JobFormProps) {
         updatedAt: new Date().toISOString(),
         isActive: true,
       };
-
       if (isEditing && job?.id) {
-        // TODO: Implement job update functionality
-        // await updateJob(job.id, jobData);
+        await updateJob(job.id, jobData);
         toast.success("The job posting has been successfully updated.");
       } else {
         await createJob(jobData);
         toast.success("Your job posting has been successfully created.");
       }
-
-      // Reset form if not editing
       if (!isEditing) {
         form.reset();
       }
-
-      // Call success callback if provided
       if (onSubmitSuccess) {
         onSubmitSuccess();
       }

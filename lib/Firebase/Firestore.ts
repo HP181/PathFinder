@@ -10,7 +10,8 @@ import {
   addDoc,
 } from 'firebase/firestore';
 import { db } from './Config';
-import { UserRole } from './Auth';
+import { Timestamp } from 'firebase/firestore';
+
 
 // User profile interfaces
 export interface ImmigrantProfile {
@@ -61,14 +62,6 @@ export interface RecruiterProfile {
   linkedIn?: string;
   position: string;
   role: 'recruiter';
-<<<<<<< main
-  company: string;
-  industry: string;
-  phone?: string;
-  resumeUrl?: string;
-  resumeData?: any;
-=======
->>>>>>> admin
   createdAt: string;
   updatedAt: string;
   companyName: string;
@@ -79,6 +72,8 @@ export interface RecruiterProfile {
   profileCompleted: boolean;
   profileCompletionPercentage: number;
 }
+
+
 
 export type UserProfile = ImmigrantProfile | MentorProfile | RecruiterProfile;
 
@@ -181,7 +176,6 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
   }
 };
 
-// Job interfaces
 export interface Job {
   id?: string;
   title: string;
@@ -205,15 +199,13 @@ export const createJob = async (job: Job): Promise<string> => {
     updatedAt: new Date().toISOString(),
     isActive: true,
   });
-  
   return docRef.id;
 };
 
 // Get jobs by recruiter
-export const getJobsByRecruiter = async (recruiterUid: string): Promise<Job[]> => {
+export const getJobsByRecruiter = async (): Promise<Job[]> => {
   const jobsQuery = query(
     collection(db, 'jobs'),
-    where('recruiterUid', '==', recruiterUid)
   );
   
   const querySnapshot = await getDocs(jobsQuery);
@@ -222,6 +214,17 @@ export const getJobsByRecruiter = async (recruiterUid: string): Promise<Job[]> =
     id: doc.id,
     ...doc.data()
   } as Job));
+};
+
+export const updateJob = async (
+  jobId: string,
+  updates: Partial<Job>
+): Promise<void> => {
+  const jobRef = doc(db, 'jobs', jobId);
+  await updateDoc(jobRef, {
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  });
 };
 
 // Match interfaces
