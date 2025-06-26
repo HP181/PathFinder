@@ -61,8 +61,8 @@ export interface RecruiterProfile {
   company: string;
   industry: string;
   phone?: string;
-  resumeUrl?: string; // ✅ Add this to fix type errors
-  resumeData?: any;
+  // resumeUrl?: string; // ✅ Add this to fix type errors
+  // resumeData?: any;
   createdAt: string;
   updatedAt: string;
   profileCompleted: boolean;
