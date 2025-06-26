@@ -55,16 +55,27 @@ export interface MentorProfile {
 
 export interface RecruiterProfile {
   uid: string;
-  displayName: string;
+   displayName: string;
   email: string;
+  phone: string;
+  linkedIn?: string;
+  position: string;
   role: 'recruiter';
+<<<<<<< main
   company: string;
   industry: string;
   phone?: string;
   resumeUrl?: string;
   resumeData?: any;
+=======
+>>>>>>> admin
   createdAt: string;
   updatedAt: string;
+  companyName: string;
+  companyWebsite: string;
+  companyIndustry: string | null;
+  location: string | null;
+  companyDescription: string | null;
   profileCompleted: boolean;
   profileCompletionPercentage: number;
 }
@@ -113,8 +124,13 @@ export const createOrUpdateProfile = async (
       p.displayName, 
       p.email, 
       p.phone, 
-      p.company, 
-      p.industry
+      p.linkedIn,
+      p.position,
+      p.companyName,
+      p.companyWebsite,
+      p.companyIndustry,
+      p.location,
+      p.companyDescription
     ];
     completionPercentage = Math.round(
       (fields.filter(Boolean).length / fields.length) * 100
