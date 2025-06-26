@@ -1,6 +1,5 @@
 // lib/Google/genai.ts
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { ParsedResume } from './Document-AI';
 
 // Log environment information for debugging
 console.log('🔧 GenAI environment check:');
@@ -113,113 +112,19 @@ export const createChat = (modelName = MODELS.GEMINI_FLASH, config = {}) => {
 };
 
 /**
- * Create a structured prompt based on parsed resume data
- */
-function createStructuredPrompt(
-  parsedResume: ParsedResume | null, 
-  resumeText: string, 
-  targetRole: string, 
-  targetIndustry: string
-): string {
-  // If we have parsed resume data, use it to create a structured prompt
-  if (parsedResume) {
-    // Format experience
-    const experienceSection = parsedResume.experience.map(exp => {
-      return `- ${exp.title || 'Position'} at ${exp.company || 'Company'}${exp.location ? ` (${exp.location})` : ''} ${exp.startDate || ''} - ${exp.endDate || 'Present'}
-  ${exp.description || 'No description available'}`;
-    }).join('\n');
-
-    // Format education
-    const educationSection = parsedResume.education.map(edu => {
-      return `- ${edu.degree || ''} in ${edu.fieldOfStudy || ''} from ${edu.institution || 'Institution'} ${edu.startDate || ''} - ${edu.endDate || ''}`;
-    }).join('\n');
-
-    // Create a structured prompt using the parsed data
-    return `Analyze this resume for a ${targetRole} position in the ${targetIndustry} industry for the Canadian job market.
-
-CANDIDATE INFORMATION:
-Name: ${parsedResume.name || 'Not specified'}
-Email: ${parsedResume.email || 'Not specified'}
-Phone: ${parsedResume.phone || 'Not specified'}
-
-PROFESSIONAL SUMMARY:
-${parsedResume.summary || 'No summary provided in resume'}
-
-SKILLS:
-${parsedResume.skills.join(', ') || 'No skills listed'}
-
-EXPERIENCE:
-${experienceSection || 'No experience listed'}
-
-EDUCATION:
-${educationSection || 'No education listed'}
-
-CERTIFICATIONS:
-${parsedResume.certifications.join(', ') || 'No certifications listed'}
-
-LANGUAGES:
-${parsedResume.languages.join(', ') || 'No languages listed'}
-
-Provide detailed feedback with the following sections in JSON format:
-1. Strengths (5 specific strengths)
-2. Areas for Improvement (5 specific areas to improve)
-3. Canadian Market Fit (a paragraph on how well the resume aligns with Canadian expectations)
-4. Recommended Changes (5 specific actionable recommendations)
-5. Skill Gaps (5 specific skills to develop for this role in Canada)
-
-Format your response as valid JSON with this structure:
-{
-  "strengths": ["strength1", "strength2", "strength3", "strength4", "strength5"],
-  "improvementAreas": ["area1", "area2", "area3", "area4", "area5"],
-  "canadianMarketFit": "Detailed paragraph here...",
-  "recommendedChanges": ["change1", "change2", "change3", "change4", "change5"],
-  "skillGaps": ["skill1", "skill2", "skill3", "skill4", "skill5"]
-}
-
-Ensure the response is ONLY valid JSON with no markdown formatting or additional text.`;
-  } else {
-    // If no parsed data is available, use the raw text
-    return `Analyze this resume for a ${targetRole} position in the ${targetIndustry} industry for the Canadian job market.
-
-RESUME TEXT:
-${resumeText}
-
-Provide detailed feedback with the following sections in JSON format:
-1. Strengths (5 specific strengths)
-2. Areas for Improvement (5 specific areas to improve)
-3. Canadian Market Fit (a paragraph on how well the resume aligns with Canadian expectations)
-4. Recommended Changes (5 specific actionable recommendations)
-5. Skill Gaps (5 specific skills to develop for this role in Canada)
-
-Format your response as valid JSON with this structure:
-{
-  "strengths": ["strength1", "strength2", "strength3", "strength4", "strength5"],
-  "improvementAreas": ["area1", "area2", "area3", "area4", "area5"],
-  "canadianMarketFit": "Detailed paragraph here...",
-  "recommendedChanges": ["change1", "change2", "change3", "change4", "change5"],
-  "skillGaps": ["skill1", "skill2", "skill3", "skill4", "skill5"]
-}
-
-Ensure the response is ONLY valid JSON with no markdown formatting or additional text.`;
-  }
-}
-
-/**
- * Analyze a resume with the given parameters
+ * Analyze a resume in a single step (parsing and analysis combined)
  */
 export const analyzeResume = async (
   resumeUrl: string | null,
   targetRole: string,
   targetIndustry: string,
-  resumeText?: string,
-  parsedResume?: ParsedResume | null
+  resumeText?: string
 ): Promise<any> => {
   console.log('🔍 Analyzing resume:', { 
     targetRole, 
     targetIndustry, 
     hasUrl: !!resumeUrl, 
-    hasText: !!resumeText,
-    hasParsedData: !!parsedResume
+    hasText: !!resumeText
   });
   
   if (!genAI) {
@@ -233,13 +138,39 @@ export const analyzeResume = async (
       temperature: 0.2, // Low temperature for more factual responses
     });
     
-    // Create a structured prompt based on parsed data (if available) or raw text
-    const prompt = createStructuredPrompt(
-      parsedResume || null, 
-      resumeText || "No resume text provided.", 
-      targetRole, 
-      targetIndustry
-    );
+    // Create a comprehensive prompt that asks GenAI to parse and analyze in one step
+    const prompt = `You are an expert resume parser and analyst specialized in the Canadian job market.
+
+First, carefully read and parse this resume. Extract key information including:
+- Contact information
+- Skills and technologies
+- Work experience
+- Education
+- Certifications
+- Languages
+- Any other relevant details
+
+Then, provide a comprehensive analysis of this resume for a ${targetRole} position in the ${targetIndustry} industry in the Canadian job market.
+
+Resume text to analyze:
+${resumeText || "No resume text provided."}
+
+Analyze this resume and provide detailed feedback in JSON format with the following sections:
+
+1. "strengths": Array of 5 specific strengths in the resume that are valuable for this role and industry in Canada
+2. "improvementAreas": Array of 5 specific areas where the resume could be improved for the Canadian job market
+3. "canadianMarketFit": A detailed paragraph explaining how well this resume aligns with Canadian employers' expectations
+4. "recommendedChanges": Array of 5 specific actionable changes to improve the resume for this role in Canada
+5. "skillGaps": Array of 5 specific skills that would make this candidate more competitive for this role in Canada
+
+Format your response as valid JSON with no additional text or explanations:
+{
+  "strengths": ["strength1", "strength2", "strength3", "strength4", "strength5"],
+  "improvementAreas": ["area1", "area2", "area3", "area4", "area5"],
+  "canadianMarketFit": "Detailed paragraph here...",
+  "recommendedChanges": ["change1", "change2", "change3", "change4", "change5"],
+  "skillGaps": ["skill1", "skill2", "skill3", "skill4", "skill5"]
+}`;
     
     console.log('🚀 Sending resume to GenAI for analysis...');
     
@@ -276,8 +207,7 @@ export const improveResume = async (
   resumeText: string,
   targetRole: string,
   targetIndustry: string,
-  analysisResult: any,
-  parsedResume?: ParsedResume | null
+  analysisResult: any
 ): Promise<string> => {
   console.log('🔍 Generating improved resume based on analysis');
   
@@ -298,65 +228,37 @@ export const improveResume = async (
     const recommendations = analysisResult.recommendedChanges?.join('\n- ') || '';
     const skillGaps = analysisResult.skillGaps?.join('\n- ') || '';
     
-    // Create the base prompt
-    let prompt = `You are a professional resume writer who specializes in creating resumes for the Canadian job market. 
-    I need you to improve this resume for a ${targetRole} position in the ${targetIndustry} industry in Canada.`;
+    // Create the prompt
+    const prompt = `You are a professional resume writer who specializes in creating resumes for the Canadian job market. 
+    I need you to improve this resume for a ${targetRole} position in the ${targetIndustry} industry in Canada.
     
-    // Add structured data if available
-    if (parsedResume) {
-      prompt += `
-
-CURRENT RESUME STRUCTURE:
-Name: ${parsedResume.name || 'Not specified'}
-Email: ${parsedResume.email || 'Not specified'}
-Phone: ${parsedResume.phone || 'Not specified'}
-
-Skills: ${parsedResume.skills.join(', ') || 'None listed'}
-
-Experience: 
-${parsedResume.experience.map(exp => 
-  `- ${exp.title || 'Position'} at ${exp.company || 'Company'} (${exp.startDate || ''} - ${exp.endDate || 'Present'})`
-).join('\n')}
-
-Education:
-${parsedResume.education.map(edu => 
-  `- ${edu.degree || ''} in ${edu.fieldOfStudy || ''} from ${edu.institution || 'Institution'}`
-).join('\n')}`;
-    } else {
-      // Add the raw text if no structured data
-      prompt += `
-
-CURRENT RESUME:
-${resumeText}`;
-    }
+    Here is the current resume:
+    ${resumeText}
     
-    // Add analysis results
-    prompt += `
-
-ANALYSIS RESULTS:
-
-Strengths:
-- ${strengths}
-
-Areas for Improvement:
-- ${improvements}
-
-Recommended Changes:
-- ${recommendations}
-
-Skill Gaps:
-- ${skillGaps}
-
-Please rewrite the resume to:
-1. Address all the improvement areas and recommended changes
-2. Maintain and highlight the existing strengths
-3. Add relevant skills and experience for a ${targetRole} in ${targetIndustry} in Canada
-4. Use Canadian resume formatting standards
-5. Include appropriate keywords for ATS systems
-6. Focus on quantifiable achievements and impact
-7. Make sure the resume is concise, professional, and well-structured
-
-Return only the improved resume text without any explanations or comments.`;
+    Here is the analysis of the current resume:
+    
+    Strengths:
+    - ${strengths}
+    
+    Areas for Improvement:
+    - ${improvements}
+    
+    Recommended Changes:
+    - ${recommendations}
+    
+    Skill Gaps:
+    - ${skillGaps}
+    
+    Please rewrite the resume to:
+    1. Address all the improvement areas and recommended changes
+    2. Maintain and highlight the existing strengths
+    3. Add relevant skills and experience for a ${targetRole} in ${targetIndustry} in Canada
+    4. Use Canadian resume formatting standards
+    5. Include appropriate keywords for ATS systems
+    6. Focus on quantifiable achievements and impact
+    7. Make sure the resume is concise, professional, and well-structured
+    
+    Return only the improved resume text without any explanations or comments.`;
     
     console.log('🚀 Sending resume improvement request to GenAI...');
     

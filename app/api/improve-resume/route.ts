@@ -1,7 +1,6 @@
 // app/api/improve-resume/route.ts
-import { NextResponse } from 'next/server';
-import { improveResume, isAvailable } from '@/lib/Google/GenAI';
-import { ParsedResume } from '@/lib/Google/Document-AI';
+import { NextResponse } from 'next/server'; // Fixed import path
+import { improveResume, isAvailable } from '@/lib/Google/GenAI'; // Fixed casing to match existing file
 
 // Configuration - read from environment
 const MOCK_MODE = process.env.RESUME_ANALYSIS_MOCK_MODE === 'true';
@@ -14,16 +13,6 @@ console.log(`🧪 Resume Improvement API config:`, {
   debugMode: DEBUG_MODE,
   genAIAvailable: isAvailable()
 });
-
-/**
- * Extract parsed resume data if available
- */
-function extractParsedResume(resumeData: any): ParsedResume | null {
-  if (resumeData && typeof resumeData === 'object' && resumeData.parsedData) {
-    return resumeData.parsedData;
-  }
-  return null;
-}
 
 /**
  * Generate a mock improved resume
@@ -125,7 +114,7 @@ export async function POST(request: Request) {
       );
     }
     
-    // Extract resume text and parsed data
+    // Extract resume text
     let resumeText = '';
     if (typeof resumeData === 'string') {
       resumeText = resumeData;
@@ -135,11 +124,8 @@ export async function POST(request: Request) {
       }
     }
     
-    // Extract parsed resume data if available
-    const parsedResume = extractParsedResume(resumeData);
-    console.log('📄 Resume data extracted:', {
-      textLength: resumeText?.length || 0,
-      hasParsedData: !!parsedResume
+    console.log('📄 Resume text extracted:', {
+      textLength: resumeText?.length || 0
     });
     
     // MOCK MODE: Return mock data immediately without further processing
@@ -169,8 +155,8 @@ export async function POST(request: Request) {
     }
     
     try {
-      // Pass parsed resume data to the improve function if available
-      const result = await improveResume(resumeText, targetRole, targetIndustry, analysisResult, parsedResume);
+      // Call GenAI to improve the resume - using only 4 parameters
+      const result = await improveResume(resumeText, targetRole, targetIndustry, analysisResult);
       
       console.log('✅ Resume improvement completed successfully');
       return NextResponse.json({ improvedResume: result });

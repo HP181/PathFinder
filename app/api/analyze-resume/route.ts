@@ -1,7 +1,8 @@
 // app/api/analyze-resume/route.ts
 import { NextResponse } from 'next/server';
 import { analyzeResume, testConnection, isAvailable } from '@/lib/Google/GenAI';
-import { ParsedResume } from '@/lib/Google/Document-AI';
+import { storage } from '@/lib/Firebase/Config';
+import { ref, getBytes } from 'firebase/storage';
 
 // Configuration - read from environment
 const MOCK_MODE = process.env.RESUME_ANALYSIS_MOCK_MODE === 'true';
@@ -113,13 +114,34 @@ function extractResumeText(resumeData: any): string | null {
 }
 
 /**
- * Extract parsed resume data if available
+ * Try to extract text from a PDF file at the given URL
  */
-function extractParsedResume(resumeData: any): ParsedResume | null {
-  if (resumeData && typeof resumeData === 'object' && resumeData.parsedData) {
-    return resumeData.parsedData;
+async function extractTextFromPdf(url: string): Promise<string | null> {
+  try {
+    console.log('📄 Attempting to extract text from PDF:', url);
+    
+    // Get the file from Firebase Storage
+    const storageRef = ref(storage, url);
+    const fileBuffer = await getBytes(storageRef);
+    
+    // Convert to text (simplified approach)
+    // For a real implementation, use a PDF parsing library
+    // Here we're just extracting text directly from the buffer
+    const text = Buffer.from(fileBuffer).toString('utf8');
+    
+    // Clean up the extracted text (remove non-printable characters)
+    const cleanedText = text.replace(/[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+    
+    // Extract only ASCII text content
+    const asciiText = cleanedText.replace(/[^\x20-\x7E\n]/g, '');
+    
+    console.log(`✅ Extracted approximately ${asciiText.length} characters of text from PDF`);
+    
+    return asciiText.length > 100 ? asciiText : null;
+  } catch (error) {
+    console.error('❌ Error extracting text from PDF:', error);
+    return null;
   }
-  return null;
 }
 
 /**
@@ -163,43 +185,22 @@ export async function POST(request: Request) {
       return NextResponse.json(mockResult);
     }
     
-    // Extract resume URL, text, and parsed data from the request
+    // Extract resume URL and text from the request
     const resumeUrl = extractResumeUrl(resumeData);
-    const resumeText = extractResumeText(resumeData) || SAMPLE_RESUME_TEXT;
-    const parsedResume = extractParsedResume(resumeData);
+    let resumeText = extractResumeText(resumeData);
+    
+    // If we have a URL but no text, try to extract text from the PDF
+    if (resumeUrl && !resumeText) {
+      resumeText = await extractTextFromPdf(resumeUrl) || SAMPLE_RESUME_TEXT;
+    } else if (!resumeText) {
+      resumeText = SAMPLE_RESUME_TEXT;
+    }
     
     console.log('📄 Resume data extracted:', { 
       hasUrl: !!resumeUrl, 
       hasText: !!resumeText,
-      textLength: resumeText?.length || 0,
-      hasParsedData: !!parsedResume
+      textLength: resumeText?.length || 0
     });
-    
-    // If we have a URL but no parsed data, try to parse the resume
-    let parsedResumeData = parsedResume;
-    if (resumeUrl && !parsedResume) {
-      try {
-        console.log('🔍 Attempting to parse resume from URL:', resumeUrl);
-        // Fetch parsed resume data - FIX: Use absolute URL for Next.js server components
-        const response = await fetch(new URL('/api/parse-resume', request.url).toString(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resumeUrl })
-        });
-        
-        if (response.ok) {
-          const parseResult = await response.json();
-          if (parseResult.parsedData) {
-            parsedResumeData = parseResult.parsedData;
-            console.log('✅ Successfully parsed resume data');
-          }
-        } else {
-          console.warn('⚠️ Failed to parse resume, continuing with text only');
-        }
-      } catch (parseError) {
-        console.warn('⚠️ Error parsing resume:', parseError);
-      }
-    }
     
     // Test the GenAI connection
     console.log('🧪 Testing GenAI connection...');
@@ -228,8 +229,8 @@ export async function POST(request: Request) {
     console.log('🔍 Analyzing resume with GenAI');
     
     try {
-      // Call GenAI to analyze the resume, including parsed data if available
-      const result = await analyzeResume(resumeUrl, targetRole, targetIndustry, resumeText, parsedResumeData);
+      // Call GenAI to analyze the resume directly
+      const result = await analyzeResume(resumeUrl, targetRole, targetIndustry, resumeText);
       
       console.log('✅ Resume analysis completed successfully');
       return NextResponse.json(result);
