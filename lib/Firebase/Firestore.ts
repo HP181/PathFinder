@@ -401,3 +401,290 @@ export const removeAvailabilitySlot = async (
   );
   await setMentorAvailability(mentorUid, updated);
 };
+
+
+
+
+// Updated Firestore interfaces - add to lib/Firebase/Firestore.ts
+
+// Extended ImmigrantProfile interface with coding assessment
+export interface ImmigrantProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  role: 'immigrant';
+  phone?: string;
+  skills: string[];
+  careerGoals: string;
+  resumeUrl?: string;
+  resumeData?: any; // Parsed resume data from DocumentAI
+  selfAssessment?: Record<string, number>; // Skill self-assessment
+  createdAt: string;
+  updatedAt: string;
+  profileCompleted: boolean;
+  profileCompletionPercentage: number;
+  // New fields for credential assessment
+  credentialDocumentUrl?: string;
+  credentialAssessment?: {
+    canadianEquivalent: string;
+    requiredLicenses: string[];
+    recommendedActions: string[];
+    explanation: string;
+  };
+  // New fields for coding assessment
+  codingAssessments?: CodingAssessment[];
+}
+
+// Coding assessment interfaces
+export interface CodingQuestion {
+  id: string;
+  question: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  category: string; // e.g., "algorithms", "data structures", "web development"
+  expectedOutput?: string;
+}
+
+export interface CodingAnswer {
+  questionId: string;
+  answer: string; // The code solution provided by the user
+  language: string; // e.g., "javascript", "python", "java"
+  submittedAt: string;
+}
+
+export interface CodingReview {
+  questionId: string;
+  correctness: number; // 0-100 score
+  efficiency: number; // 0-100 score
+  readability: number; // 0-100 score
+  overallScore: number; // 0-100 score
+  feedback: string;
+  improvements: string[];
+  reviewedAt: string;
+}
+
+export interface CodingAssessment {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'reviewed';
+  questions: CodingQuestion[];
+  answers?: Record<string, CodingAnswer>;
+  reviews?: Record<string, CodingReview>;
+}
+
+// New functions for coding assessments
+
+// Generate coding questions based on resume
+export const generateCodingQuestions = async (
+  userId: string
+): Promise<CodingAssessment | null> => {
+  try {
+    // Get user profile to access resume URL
+    const profile = await getUserProfile(userId);
+    
+    if (!profile || !profile.resumeUrl) {
+      console.error('Cannot generate questions: User profile or resume not found');
+      return null;
+    }
+    
+    // Call the API to generate questions based on the resume
+    const response = await fetch('/api/generate-coding-questions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        resumeUrl: profile.resumeUrl
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to generate coding questions');
+    }
+    
+    const assessment = await response.json();
+    
+    // Save the assessment to Firestore
+    await saveCodingAssessment(userId, assessment);
+    
+    return assessment;
+  } catch (error) {
+    console.error('Error generating coding questions:', error);
+    return null;
+  }
+};
+
+// Save coding assessment to Firestore
+export const saveCodingAssessment = async (
+  userId: string,
+  assessment: CodingAssessment
+): Promise<void> => {
+  try {
+    // Get the user profile
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    
+    if (!profileSnap.exists()) {
+      throw new Error('Profile not found');
+    }
+    
+    const profileData = profileSnap.data();
+    const currentAssessments = profileData.codingAssessments || [];
+    
+    // Check if this assessment already exists
+    const existingIndex = currentAssessments.findIndex((a: CodingAssessment) => a.id === assessment.id);
+    
+    if (existingIndex >= 0) {
+      // Update existing assessment
+      currentAssessments[existingIndex] = assessment;
+    } else {
+      // Add new assessment
+      currentAssessments.push(assessment);
+    }
+    
+    // Update the profile
+    await updateDoc(profileRef, {
+      codingAssessments: currentAssessments,
+      updatedAt: new Date().toISOString()
+    });
+    
+    // Also create a separate document in assessments collection for querying
+    const assessmentRef = doc(db, 'assessments', assessment.id);
+    await setDoc(assessmentRef, {
+      ...assessment,
+      userId,
+      updatedAt: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error saving coding assessment:', error);
+    throw error;
+  }
+};
+
+// Submit answers for coding questions
+export const submitCodingAnswers = async (
+  userId: string,
+  assessmentId: string,
+  answers: Record<string, CodingAnswer>
+): Promise<CodingAssessment | null> => {
+  try {
+    // Get the user profile
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    
+    if (!profileSnap.exists()) {
+      throw new Error('Profile not found');
+    }
+    
+    const profileData = profileSnap.data();
+    const assessments = profileData.codingAssessments || [];
+    
+    // Find the assessment
+    const assessmentIndex = assessments.findIndex((a: CodingAssessment) => a.id === assessmentId);
+    
+    if (assessmentIndex < 0) {
+      throw new Error('Assessment not found');
+    }
+    
+    // Update the assessment with answers
+    const assessment = assessments[assessmentIndex];
+    assessment.answers = answers;
+    assessment.status = 'completed';
+    assessment.updatedAt = new Date().toISOString();
+    
+    // Update the profile
+    await updateDoc(profileRef, {
+      codingAssessments: assessments,
+      updatedAt: new Date().toISOString()
+    });
+    
+    // Update the assessment document
+    const assessmentRef = doc(db, 'assessments', assessmentId);
+    await updateDoc(assessmentRef, {
+      answers,
+      status: 'completed',
+      updatedAt: new Date().toISOString()
+    });
+    
+    // Call the API to review the answers
+    const response = await fetch('/api/review-coding-answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        assessmentId,
+        answers
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to review coding answers');
+    }
+    
+    const updatedAssessment = await response.json();
+    
+    // Save the review results
+    await saveCodingAssessment(userId, updatedAssessment);
+    
+    return updatedAssessment;
+  } catch (error) {
+    console.error('Error submitting coding answers:', error);
+    return null;
+  }
+};
+
+// Get a specific coding assessment
+export const getCodingAssessment = async (
+  userId: string,
+  assessmentId: string
+): Promise<CodingAssessment | null> => {
+  try {
+    // Get the user profile
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    
+    if (!profileSnap.exists()) {
+      return null;
+    }
+    
+    const profileData = profileSnap.data();
+    const assessments = profileData.codingAssessments || [];
+    
+    // Find the assessment
+    const assessment = assessments.find((a: CodingAssessment) => a.id === assessmentId);
+    
+    return assessment || null;
+  } catch (error) {
+    console.error('Error getting coding assessment:', error);
+    return null;
+  }
+};
+
+// Get all coding assessments for a user
+export const getUserCodingAssessments = async (
+  userId: string
+): Promise<CodingAssessment[]> => {
+  try {
+    // Get the user profile
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    
+    if (!profileSnap.exists()) {
+      return [];
+    }
+    
+    const profileData = profileSnap.data();
+    const assessments = profileData.codingAssessments || [];
+    
+    return assessments;
+  } catch (error) {
+    console.error('Error getting user coding assessments:', error);
+    return [];
+  }
+};
