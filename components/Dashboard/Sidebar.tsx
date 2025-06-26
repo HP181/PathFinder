@@ -47,7 +47,7 @@ export function Sidebar({ userRole }: SidebarProps) {
           { name: 'Profile', href: '/recruiter/profile', icon: <User className="h-5 w-5" /> },
           { name: 'Manage Jobs', href: '/recruiter/jobs', icon: <Briefcase className="h-5 w-5" /> },
           { name: 'View Applicants', href: '/recruiter/applicants', icon: <FileText className="h-5 w-5" /> },
-          { name: 'Messages', href: '/messaging', icon: <MessageSquare className="h-5 w-5" /> },
+          // { name: 'Messages', href: '/messaging', icon: <MessageSquare className="h-5 w-5" /> },
         ];
       case 'admin':
         return [
