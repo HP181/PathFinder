@@ -24,11 +24,28 @@ export default function ChatPage() {
       const db = getFirestore();
       const usersCol = collection(db, 'users');
       const userSnapshot = await getDocs(usersCol);
-      const users: User[] = userSnapshot.docs.map(doc => ({
-        userId: doc.id,
-        name: doc.data().displayName,
-        role: doc.data().role,
-      })).filter(userx => userx.userId !== user?.uid);
+
+          // Fetch mentor UIDs from 'matches' where immigrantUid == current user id
+          const matchesCol = collection(db, 'matches');
+          const matchesSnapshot = await getDocs(matchesCol);
+          const mentorUids: string[] = matchesSnapshot.docs
+            .filter(doc => doc.data().immigrantUid === user?.uid)
+            .map(doc => doc.data().mentorUid);
+
+          // Only include users who are mentors in the matches
+          const users: User[] = userSnapshot.docs
+            .filter(doc => mentorUids.includes(doc.id))
+            .map(doc => ({
+              userId: doc.id,
+              name: doc.data().displayName,
+              role: doc.data().role,
+            }));
+
+      // const users: User[] = userSnapshot.docs.map(doc => ({
+      //   userId: doc.id,
+      //   name: doc.data().displayName,
+      //   role: doc.data().role,
+      // })).filter(userx => userx.userId !== user?.uid);
       setUserList(users);
     };
     fetchUsers();
